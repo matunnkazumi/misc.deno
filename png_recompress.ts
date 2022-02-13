@@ -11,6 +11,11 @@ export interface ConvertOption {
   resize_width: number;
 }
 
+async function image_width(file_path: string): Promise<number> {
+  const result = await $`identify -format "%w" ${file_path}`;
+  return parseInt(result.stdout);
+}
+
 export async function png_recompless(
   files: Array<RecomplessFile>,
   param: ConvertOption,
@@ -26,12 +31,17 @@ export async function png_recompless(
       newFileName: `output/${date_prefix}_${file.newFileNameBase}`,
     };
   }).map(async (file) => {
+    const width = await image_width(file.srcFileName);
+
     const temp_file_resize = await Deno.makeTempFile({
       prefix: temp_dir + "/",
     });
-
-    await $
-      `convert -crop 1920x1080+220+0 -resize ${param.resize_width}x -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
+    if (width > param.resize_width) {
+      await $
+        `convert -crop 1920x1080+220+0 -resize ${param.resize_width}x -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
+    } else {
+      await Deno.copyFile(file.srcFileName, temp_file_resize);
+    }
 
     const temp_file_pngquant = await Deno.makeTempFile({
       prefix: temp_dir + "/",
