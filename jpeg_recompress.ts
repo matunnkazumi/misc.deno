@@ -1,8 +1,7 @@
-import { format } from "https://deno.land/std@0.77.0/datetime/mod.ts";
 import { $ } from "https://deno.land/x/zx_deno@1.2.2/mod.mjs";
+import { date_now_jst_format } from "./util.ts";
 
-const jst_date = new Date(Date.now() + 9 * 60 * 60 * 1000);
-const date_prefix = format(jst_date, `yyyyMMdd`);
+const date_prefix = date_now_jst_format();
 
 export interface RecomplessFile {
   srcFileName: string;
