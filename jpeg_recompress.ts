@@ -1,5 +1,5 @@
 import { $ } from "https://deno.land/x/zx_deno@1.2.2/mod.mjs";
-import { date_now_jst_format } from "./util.ts";
+import { date_now_jst_format, makeTempDir, makeTempFile } from "./util.ts";
 
 const date_prefix = date_now_jst_format();
 
@@ -15,7 +15,7 @@ export async function jpeg_recompless(
   files: Array<RecomplessFile>,
   param: ConvertOption,
 ) {
-  const temp_dir = await Deno.makeTempDir({
+  const temp_dir = await makeTempDir({
     prefix: "matunnkazumi-jpeg-tempdir",
   });
 
@@ -26,7 +26,7 @@ export async function jpeg_recompless(
       newFileName: `output/${date_prefix}_${file.newFileNameBase}`,
     };
   }).map(async (file) => {
-    const temp_file_name = await Deno.makeTempFile({ prefix: temp_dir + "/" });
+    const temp_file_name = await makeTempFile({ prefix: temp_dir + "/" });
 
     await $
       `convert -resize ${param.resize_width}x -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_name}`;

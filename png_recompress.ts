@@ -1,5 +1,5 @@
 import { $ } from "https://deno.land/x/zx_deno@1.2.2/mod.mjs";
-import { date_now_jst_format } from "./util.ts";
+import { date_now_jst_format, makeTempDir, makeTempFile } from "./util.ts";
 
 const date_prefix = date_now_jst_format();
 
@@ -20,7 +20,7 @@ export async function png_recompless(
   files: Array<RecomplessFile>,
   param: ConvertOption,
 ) {
-  const temp_dir = await Deno.makeTempDir({
+  const temp_dir = await makeTempDir({
     prefix: "matunnkazumi-png-tempdir",
   });
 
@@ -33,7 +33,7 @@ export async function png_recompless(
   }).map(async (file) => {
     const width = await image_width(file.srcFileName);
 
-    const temp_file_resize = await Deno.makeTempFile({
+    const temp_file_resize = await makeTempFile({
       prefix: temp_dir + "/",
     });
     if (width > param.resize_width) {
@@ -43,7 +43,7 @@ export async function png_recompless(
       await Deno.copyFile(file.srcFileName, temp_file_resize);
     }
 
-    const temp_file_pngquant = await Deno.makeTempFile({
+    const temp_file_pngquant = await makeTempFile({
       prefix: temp_dir + "/",
     });
     // https://qiita.com/thanks2music@github/items/309700a411652c00672a
@@ -51,7 +51,7 @@ export async function png_recompless(
     await $
       `pngquant --force --speed 1 ${temp_file_resize} --output ${temp_file_pngquant}`;
 
-    const temp_file_pngcrush = await Deno.makeTempFile({
+    const temp_file_pngcrush = await makeTempFile({
       prefix: temp_dir + "/",
     });
     await $
