@@ -1,4 +1,5 @@
 import {
+  add_xmp_user_comment,
   date_now_jst_format,
   image_width,
   makeTempFile,
@@ -77,41 +78,12 @@ async function call_resize_and_crop(
   }
 }
 
-async function call_pngquant(
-  srcFileName: ReadableStream<Uint8Array>,
-) {
-  // https://qiita.com/thanks2music@github/items/309700a411652c00672a
-  // 圧縮率は最高で、圧縮前の画像を残さない
-
-  const command = new Deno.Command(
-    "pngquant",
-    {
-      args: [
-        "--force",
-        "--speed",
-        "1",
-        "-",
-      ],
-      stdin: "piped",
-      stdout: "piped",
-    },
-  );
-
-  const child = command.spawn();
-  await srcFileName.pipeTo(child.stdin);
-
-  return child.stdout;
-}
-
-async function call_crush_zopfli(
+async function call_avifenc(
   temp_dir: string,
   srcFile: ReadableStream<Uint8Array>,
   destFileName: string,
 ) {
   const temp_file_src = await makeTempFile({
-    prefix: temp_dir + "/",
-  });
-  const temp_file_pngcrush = await makeTempFile({
     prefix: temp_dir + "/",
   });
 
@@ -121,38 +93,20 @@ async function call_crush_zopfli(
     truncate: true,
   });
   await srcFile.pipeTo(file.writable);
-
   (new Deno.Command(
-    "pngcrush",
+    "avifenc",
     {
       args: [
-        "-force",
-        "-nofilecheck",
-        "-text",
-        "b",
-        "Comment",
-        "https://matunnkazumi.blog.fc2.com",
+        "-s",
+        "0",
         temp_file_src,
-        temp_file_pngcrush,
-      ],
-    },
-  )).outputSync();
-
-  (new Deno.Command(
-    "zopflipng",
-    {
-      args: [
-        "-y",
-        "-m",
-        "--keepchunks=tEXt",
-        temp_file_pngcrush,
         destFileName,
       ],
     },
   )).outputSync();
 }
 
-export async function png_recompless(
+export async function avif_recompless(
   files: Array<RecomplessFile>,
   param: ConvertOption,
 ) {
@@ -171,10 +125,13 @@ export async function png_recompless(
 
       console.log(`convert ${file.srcFileName}`);
       const resized = await call_resize_and_crop(srcStream, width, param);
-      console.log(`pngquant ${file.srcFileName}`);
-      const quanted = await call_pngquant(resized);
-      console.log(`pngcrush and zopflipng ${file.srcFileName}`);
-      await call_crush_zopfli(temp_dir, quanted, file.newFileName);
+      console.log(`avifenc ${file.srcFileName}`);
+      await call_avifenc(temp_dir, resized, file.newFileName);
+      console.log(`metadata ${file.newFileName}`);
+      await add_xmp_user_comment(
+        file.newFileName,
+        "https://matunnkazumi.blog.fc2.com/",
+      );
     });
     await Promise.all(conveters);
   });
@@ -204,11 +161,11 @@ export async function same_basename_with_number(
     .map((file, index) => {
       return {
         srcFileName: file,
-        newFileNameBase: `${basename}_${index + 1}.png`,
+        newFileNameBase: `${basename}_${index + 1}.avif`,
       };
     });
 
-  await png_recompless(result, option);
+  await avif_recompless(result, option);
 }
 
 export async function convert_file_name_mapping(
@@ -224,5 +181,5 @@ export async function convert_file_name_mapping(
       newFileNameBase: m[1],
     };
   });
-  await png_recompless(dict, option);
+  await avif_recompless(dict, option);
 }
