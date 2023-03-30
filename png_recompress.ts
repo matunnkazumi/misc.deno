@@ -9,11 +9,27 @@ export interface RecomplessFile {
 }
 export interface ConvertOption {
   resize_width: number;
+  crop?: {
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+  } | null;
 }
 
 async function image_width(file_path: string): Promise<number> {
   const result = await $`identify -format "%w" ${file_path}`;
   return parseInt(result.stdout);
+}
+
+function require_convert(width: number, option: ConvertOption): boolean {
+  if (width > option.resize_width) {
+    return true;
+  }
+  if (option.crop) {
+    return true;
+  }
+  return false;
 }
 
 export async function png_recompless(
@@ -24,7 +40,7 @@ export async function png_recompless(
     prefix: "matunnkazumi-png-tempdir",
   });
 
-  await Deno.mkdir("./output");
+  await Deno.mkdir("./output", { recursive: true });
   const conveters = files.map((file) => {
     return {
       srcFileName: file.srcFileName,
@@ -36,9 +52,17 @@ export async function png_recompless(
     const temp_file_resize = await makeTempFile({
       prefix: temp_dir + "/",
     });
-    if (width > param.resize_width) {
-      await $
-        `convert -crop 1920x1080+220+0 -resize ${param.resize_width}x -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
+    if (require_convert(width, param)) {
+      const resizeOpt = (width > param.resize_width) ? `-resize` : "";
+      const resizeParam = (width > param.resize_width)
+        ? `${param.resize_width}x`
+        : "";
+      const cropOpt = param.crop ? "-crop" : "";
+      const cropParam = param.crop
+        ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
+        : "";
+
+      await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
     } else {
       await Deno.copyFile(file.srcFileName, temp_file_resize);
     }
@@ -74,7 +98,10 @@ function is_jpeg_file(entry: Deno.DirEntry) {
 
 export async function same_basename_with_number(
   basename: string,
-  option: ConvertOption = { resize_width: 920 },
+  option: ConvertOption = {
+    resize_width: 920,
+    crop: { width: 1920, height: 1080, left: 220, top: 0 },
+  },
 ) {
   const result = Array.from(Deno.readDirSync("./"))
     .filter(is_jpeg_file)
@@ -92,7 +119,10 @@ export async function same_basename_with_number(
 
 export async function convert_file_name_mapping(
   mapping: Array<[string, string]>,
-  option: ConvertOption = { resize_width: 920 },
+  option: ConvertOption = {
+    resize_width: 920,
+    crop: { width: 1920, height: 1080, left: 220, top: 0 },
+  },
 ) {
   const dict = mapping.map((m) => {
     return {
