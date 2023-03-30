@@ -123,7 +123,7 @@ async function call_crush_zopfli(
   });
   await srcFile.pipeTo(file.writable);
 
-  (new Deno.Command(
+  await (new Deno.Command(
     "pngcrush",
     {
       args: [
@@ -133,9 +133,9 @@ async function call_crush_zopfli(
         temp_file_pngcrush,
       ],
     },
-  )).outputSync();
+  )).output();
 
-  (new Deno.Command(
+  await (new Deno.Command(
     "zopflipng",
     {
       args: [
@@ -145,7 +145,7 @@ async function call_crush_zopfli(
         destFileName,
       ],
     },
-  )).outputSync();
+  )).output();
 }
 
 export async function png_recompless(
