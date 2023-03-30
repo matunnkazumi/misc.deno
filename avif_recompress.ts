@@ -54,7 +54,7 @@ async function call_resize_and_crop(
       "100",
       "-unsharp",
       "0x0.75+0.75+0.008",
-      "-",
+      "png:-",
     );
 
     const command = new Deno.Command(

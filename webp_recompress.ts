@@ -49,7 +49,7 @@ async function call_resize_and_crop(
       "0x0.75+0.75+0.008",
       "-define",
       "webp:lossless=true",
-      "-",
+      "webp:-",
     );
 
     const command = new Deno.Command(
