@@ -1,4 +1,9 @@
-import { date_now_jst_format, makeTempDir, makeTempFile } from "./util.ts";
+import {
+  date_now_jst_format,
+  image_width,
+  makeTempFile,
+  useTempDir,
+} from "./util.ts";
 
 const date_prefix = date_now_jst_format();
 
@@ -16,16 +21,6 @@ export interface ConvertOption {
   } | null;
 }
 
-async function image_width(file_path: string): Promise<number> {
-  const command = new Deno.Command("identify", {
-    args: ["-format", "%w", file_path],
-  });
-  const { stdout } = await command.output();
-  const output = new TextDecoder().decode(stdout);
-  const width = parseInt(output);
-  return width;
-}
-
 function require_convert(width: number, option: ConvertOption): boolean {
   if (width > option.resize_width) {
     return true;
@@ -34,20 +29,6 @@ function require_convert(width: number, option: ConvertOption): boolean {
     return true;
   }
   return false;
-}
-
-async function useTempDir(work: (dir: string) => Promise<void>) {
-  const temp_dir = await makeTempDir({
-    prefix: "matunnkazumi-png-tempdir",
-  });
-
-  await Deno.mkdir("./output", { recursive: true });
-
-  try {
-    await work(temp_dir);
-  } finally {
-    await Deno.remove(temp_dir, { recursive: true });
-  }
 }
 
 async function call_resize_and_crop(
