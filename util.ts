@@ -59,7 +59,19 @@ export async function add_xmp_user_comment(file_path: string, comment: string) {
   const command = new Deno.Command("exiftool", {
     args: [
       "-overwrite_original",
-      `-XMP-exif:UserComment="${comment}"`,
+      `-XMP-exif:UserComment=${comment}`,
+      file_path,
+    ],
+  });
+
+  await command.output();
+}
+
+export async function add_png_text_comment(file_path: string, comment: string) {
+  const command = new Deno.Command("exiftool", {
+    args: [
+      "-overwrite_original",
+      `-Comment=${comment}`,
       file_path,
     ],
   });
