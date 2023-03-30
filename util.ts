@@ -54,3 +54,15 @@ export async function image_width(file_path: string): Promise<number> {
   const width = parseInt(output);
   return width;
 }
+
+export async function add_xmp_user_comment(file_path: string, comment: string) {
+  const command = new Deno.Command("exiftool", {
+    args: [
+      "-overwrite_original",
+      `-XMP-exif:UserComment="${comment}"`,
+      file_path,
+    ],
+  });
+
+  await command.output();
+}

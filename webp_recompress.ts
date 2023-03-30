@@ -97,6 +97,15 @@ export async function webp_recompless(
       truncate: true,
     });
     await resized.pipeTo(newFile.writable);
+
+    // require exiftool 12.46 or later
+    //console.log(`metadata ${file.newFileName}`);
+    /*
+    await add_xmp_user_comment(
+      file.newFileName,
+      "https://matunnkazumi.blog.fc2.com/",
+    );
+    */
   });
   await Promise.all(conveters);
 }

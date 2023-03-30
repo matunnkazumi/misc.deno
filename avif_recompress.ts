@@ -1,4 +1,5 @@
 import {
+  add_xmp_user_comment,
   date_now_jst_format,
   image_width,
   makeTempFile,
@@ -126,6 +127,11 @@ export async function avif_recompless(
       const resized = await call_resize_and_crop(srcStream, width, param);
       console.log(`avifenc ${file.srcFileName}`);
       await call_avifenc(temp_dir, resized, file.newFileName);
+      console.log(`metadata ${file.newFileName}`);
+      await add_xmp_user_comment(
+        file.newFileName,
+        "https://matunnkazumi.blog.fc2.com/",
+      );
     });
     await Promise.all(conveters);
   });
