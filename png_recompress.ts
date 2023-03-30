@@ -88,8 +88,10 @@ async function call_resize_and_crop(
     const child = command.spawn();
     await srcFileName.pipeTo(child.stdin);
 
+    console.log("converted");
     return child.stdout;
   } else {
+    console.log("no converted");
     return srcFileName;
   }
 }
@@ -183,10 +185,14 @@ export async function png_recompless(
       await Deno.mkdir("./output", { recursive: true });
 
       const width = await image_width(file.srcFileName);
+      console.log(`${file.srcFileName}: ${width}px`);
       const srcStream = (await Deno.open(file.srcFileName)).readable;
 
+      console.log(`convert ${file.srcFileName}`);
       const resized = await call_resize_and_crop(srcStream, width, param);
+      console.log(`pngquant ${file.srcFileName}`);
       const quanted = await call_pngquant(resized);
+      console.log(`pngcrush and zopflipng ${file.srcFileName}`);
       await call_crush_zopfli(temp_dir, quanted, file.newFileName);
     });
     await Promise.all(conveters);
