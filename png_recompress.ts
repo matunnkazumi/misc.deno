@@ -48,17 +48,14 @@ export async function png_recompless(
     });
     // https://qiita.com/thanks2music@github/items/309700a411652c00672a
     // 圧縮率は最高で、圧縮前の画像を残さない
-    await $
-      `pngquant --force --speed 1 ${temp_file_resize} --output ${temp_file_pngquant}`;
+    await $`pngquant --force --speed 1 ${temp_file_resize} --output ${temp_file_pngquant}`;
 
     const temp_file_pngcrush = await makeTempFile({
       prefix: temp_dir + "/",
     });
-    await $
-      `pngcrush -force -nofilecheck -text b "Comment" "https://matunnkazumi.blog.fc2.com" ${temp_file_pngquant} ${temp_file_pngcrush}`;
+    await $`pngcrush -force -nofilecheck -text b "Comment" "https://matunnkazumi.blog.fc2.com" ${temp_file_pngquant} ${temp_file_pngcrush}`;
 
-    await $
-      `zopflipng -y -m --keepchunks=tEXt ${temp_file_pngcrush} ${file.newFileName}`;
+    await $`zopflipng -y -m --keepchunks=tEXt ${temp_file_pngcrush} ${file.newFileName}`;
   });
   await Promise.all(conveters);
 
