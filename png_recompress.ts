@@ -53,16 +53,34 @@ async function resize_and_crop(
   param: ConvertOption,
 ) {
   if (require_convert(width, param)) {
-    const resizeOpt = (width > param.resize_width) ? `-resize` : "";
-    const resizeParam = (width > param.resize_width)
-      ? `${param.resize_width}x`
-      : "";
-    const cropOpt = param.crop ? "-crop" : "";
-    const cropParam = param.crop
-      ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
-      : "";
+    const args = [];
+    if (param.crop) {
+      args.push("-crop");
+      args.push(
+        `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`,
+      );
+    }
+    if (width > param.resize_width) {
+      args.push("-resize");
+      args.push(`${param.resize_width}x`);
+    }
+    args.push(
+      "-quality",
+      "100",
+      "-unsharp",
+      "0x0.75+0.75+0.008",
+      srcFileName,
+      destFileName,
+    );
 
-    await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${srcFileName} ${destFileName}`;
+    const command = new Deno.Command(
+      "convert",
+      {
+        args: args,
+      },
+    );
+
+    await command.output();
   } else {
     await Deno.copyFile(srcFileName, destFileName);
   }
