@@ -32,58 +32,69 @@ function require_convert(width: number, option: ConvertOption): boolean {
   return false;
 }
 
-export async function png_recompless(
-  files: Array<RecomplessFile>,
-  param: ConvertOption,
-) {
+async function useTempDir(work: (dir: string) => Promise<void>) {
   const temp_dir = await makeTempDir({
     prefix: "matunnkazumi-png-tempdir",
   });
 
   await Deno.mkdir("./output", { recursive: true });
-  const conveters = files.map((file) => {
-    return {
-      srcFileName: file.srcFileName,
-      newFileName: `output/${date_prefix}_${file.newFileNameBase}`,
-    };
-  }).map(async (file) => {
-    const width = await image_width(file.srcFileName);
 
-    const temp_file_resize = await makeTempFile({
-      prefix: temp_dir + "/",
+  try {
+    await work(temp_dir);
+  } finally {
+    await Deno.remove(temp_dir, { recursive: true });
+  }
+}
+
+export async function png_recompless(
+  files: Array<RecomplessFile>,
+  param: ConvertOption,
+) {
+  await useTempDir(async (temp_dir) => {
+    const conveters = files.map((file) => {
+      return {
+        srcFileName: file.srcFileName,
+        newFileName: `output/${date_prefix}_${file.newFileNameBase}`,
+      };
+    }).map(async (file) => {
+      await Deno.mkdir("./output", { recursive: true });
+
+      const width = await image_width(file.srcFileName);
+
+      const temp_file_resize = await makeTempFile({
+        prefix: temp_dir + "/",
+      });
+      if (require_convert(width, param)) {
+        const resizeOpt = (width > param.resize_width) ? `-resize` : "";
+        const resizeParam = (width > param.resize_width)
+          ? `${param.resize_width}x`
+          : "";
+        const cropOpt = param.crop ? "-crop" : "";
+        const cropParam = param.crop
+          ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
+          : "";
+
+        await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
+      } else {
+        await Deno.copyFile(file.srcFileName, temp_file_resize);
+      }
+
+      const temp_file_pngquant = await makeTempFile({
+        prefix: temp_dir + "/",
+      });
+      // https://qiita.com/thanks2music@github/items/309700a411652c00672a
+      // 圧縮率は最高で、圧縮前の画像を残さない
+      await $`pngquant --force --speed 1 ${temp_file_resize} --output ${temp_file_pngquant}`;
+
+      const temp_file_pngcrush = await makeTempFile({
+        prefix: temp_dir + "/",
+      });
+      await $`pngcrush -force -nofilecheck -text b "Comment" "https://matunnkazumi.blog.fc2.com" ${temp_file_pngquant} ${temp_file_pngcrush}`;
+
+      await $`zopflipng -y -m --keepchunks=tEXt ${temp_file_pngcrush} ${file.newFileName}`;
     });
-    if (require_convert(width, param)) {
-      const resizeOpt = (width > param.resize_width) ? `-resize` : "";
-      const resizeParam = (width > param.resize_width)
-        ? `${param.resize_width}x`
-        : "";
-      const cropOpt = param.crop ? "-crop" : "";
-      const cropParam = param.crop
-        ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
-        : "";
-
-      await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
-    } else {
-      await Deno.copyFile(file.srcFileName, temp_file_resize);
-    }
-
-    const temp_file_pngquant = await makeTempFile({
-      prefix: temp_dir + "/",
-    });
-    // https://qiita.com/thanks2music@github/items/309700a411652c00672a
-    // 圧縮率は最高で、圧縮前の画像を残さない
-    await $`pngquant --force --speed 1 ${temp_file_resize} --output ${temp_file_pngquant}`;
-
-    const temp_file_pngcrush = await makeTempFile({
-      prefix: temp_dir + "/",
-    });
-    await $`pngcrush -force -nofilecheck -text b "Comment" "https://matunnkazumi.blog.fc2.com" ${temp_file_pngquant} ${temp_file_pngcrush}`;
-
-    await $`zopflipng -y -m --keepchunks=tEXt ${temp_file_pngcrush} ${file.newFileName}`;
+    await Promise.all(conveters);
   });
-  await Promise.all(conveters);
-
-  await Deno.remove(temp_dir, { recursive: true });
 }
 
 function is_jpeg_file(entry: Deno.DirEntry) {
