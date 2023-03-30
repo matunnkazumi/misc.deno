@@ -46,6 +46,28 @@ async function useTempDir(work: (dir: string) => Promise<void>) {
   }
 }
 
+async function resize_and_crop(
+  srcFileName: string,
+  destFileName: string,
+  width: number,
+  param: ConvertOption,
+) {
+  if (require_convert(width, param)) {
+    const resizeOpt = (width > param.resize_width) ? `-resize` : "";
+    const resizeParam = (width > param.resize_width)
+      ? `${param.resize_width}x`
+      : "";
+    const cropOpt = param.crop ? "-crop" : "";
+    const cropParam = param.crop
+      ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
+      : "";
+
+    await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${srcFileName} ${destFileName}`;
+  } else {
+    await Deno.copyFile(srcFileName, destFileName);
+  }
+}
+
 export async function png_recompless(
   files: Array<RecomplessFile>,
   param: ConvertOption,
@@ -64,20 +86,7 @@ export async function png_recompless(
       const temp_file_resize = await makeTempFile({
         prefix: temp_dir + "/",
       });
-      if (require_convert(width, param)) {
-        const resizeOpt = (width > param.resize_width) ? `-resize` : "";
-        const resizeParam = (width > param.resize_width)
-          ? `${param.resize_width}x`
-          : "";
-        const cropOpt = param.crop ? "-crop" : "";
-        const cropParam = param.crop
-          ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
-          : "";
-
-        await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
-      } else {
-        await Deno.copyFile(file.srcFileName, temp_file_resize);
-      }
+      await resize_and_crop(file.srcFileName, temp_file_resize, width, param);
 
       const temp_file_pngquant = await makeTempFile({
         prefix: temp_dir + "/",
