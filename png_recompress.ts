@@ -1,4 +1,3 @@
-import { $ } from "https://deno.land/x/zx_deno@1.2.2/mod.mjs";
 import { date_now_jst_format, makeTempDir, makeTempFile } from "./util.ts";
 
 const date_prefix = date_now_jst_format();
@@ -18,8 +17,13 @@ export interface ConvertOption {
 }
 
 async function image_width(file_path: string): Promise<number> {
-  const result = await $`identify -format "%w" ${file_path}`;
-  return parseInt(result.stdout);
+  const command = new Deno.Command("identify", {
+    args: ["-format", "%w", file_path],
+  });
+  const { stdout } = await command.output();
+  const output = new TextDecoder().decode(stdout);
+  const width = parseInt(output);
+  return width;
 }
 
 function require_convert(width: number, option: ConvertOption): boolean {
@@ -46,6 +50,127 @@ async function useTempDir(work: (dir: string) => Promise<void>) {
   }
 }
 
+async function call_resize_and_crop(
+  srcFileName: ReadableStream<Uint8Array>,
+  width: number,
+  param: ConvertOption,
+) {
+  if (require_convert(width, param)) {
+    const args = [];
+    args.push("-");
+    if (param.crop) {
+      args.push("-crop");
+      args.push(
+        `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`,
+      );
+    }
+    if (width > param.resize_width) {
+      args.push("-resize");
+      args.push(`${param.resize_width}x`);
+    }
+    args.push(
+      "-quality",
+      "100",
+      "-unsharp",
+      "0x0.75+0.75+0.008",
+      "-",
+    );
+
+    const command = new Deno.Command(
+      "convert",
+      {
+        args: args,
+        stdin: "piped",
+        stdout: "piped",
+      },
+    );
+
+    const child = command.spawn();
+    await srcFileName.pipeTo(child.stdin);
+
+    console.log("converted");
+    return child.stdout;
+  } else {
+    console.log("no converted");
+    return srcFileName;
+  }
+}
+
+async function call_pngquant(
+  srcFileName: ReadableStream<Uint8Array>,
+) {
+  // https://qiita.com/thanks2music@github/items/309700a411652c00672a
+  // 圧縮率は最高で、圧縮前の画像を残さない
+
+  const command = new Deno.Command(
+    "pngquant",
+    {
+      args: [
+        "--force",
+        "--speed",
+        "1",
+        "-",
+      ],
+      stdin: "piped",
+      stdout: "piped",
+    },
+  );
+
+  const child = command.spawn();
+  await srcFileName.pipeTo(child.stdin);
+
+  return child.stdout;
+}
+
+async function call_crush_zopfli(
+  temp_dir: string,
+  srcFile: ReadableStream<Uint8Array>,
+  destFileName: string,
+) {
+  const temp_file_src = await makeTempFile({
+    prefix: temp_dir + "/",
+  });
+  const temp_file_pngcrush = await makeTempFile({
+    prefix: temp_dir + "/",
+  });
+
+  const file = await Deno.open(temp_file_src, {
+    create: true,
+    write: true,
+    truncate: true,
+  });
+  await srcFile.pipeTo(file.writable);
+
+  (new Deno.Command(
+    "pngcrush",
+    {
+      args: [
+        "-force",
+        "-nofilecheck",
+        "-text",
+        "b",
+        "Comment",
+        "https://matunnkazumi.blog.fc2.com",
+        temp_file_src,
+        temp_file_pngcrush,
+      ],
+    },
+  )).outputSync();
+
+  (new Deno.Command(
+    "zopflipng",
+    {
+      args: [
+        "-y",
+        "-m",
+        "--keepchunks=tEXt",
+        temp_file_pngcrush,
+        destFileName,
+      ],
+    },
+  )).outputSync();
+}
+
 export async function png_recompless(
   files: Array<RecomplessFile>,
   param: ConvertOption,
@@ -60,38 +185,15 @@ export async function png_recompless(
       await Deno.mkdir("./output", { recursive: true });
 
       const width = await image_width(file.srcFileName);
+      console.log(`${file.srcFileName}: ${width}px`);
+      const srcStream = (await Deno.open(file.srcFileName)).readable;
 
-      const temp_file_resize = await makeTempFile({
-        prefix: temp_dir + "/",
-      });
-      if (require_convert(width, param)) {
-        const resizeOpt = (width > param.resize_width) ? `-resize` : "";
-        const resizeParam = (width > param.resize_width)
-          ? `${param.resize_width}x`
-          : "";
-        const cropOpt = param.crop ? "-crop" : "";
-        const cropParam = param.crop
-          ? `${param.crop.width}x${param.crop.height}+${param.crop.left}+${param.crop.top}`
-          : "";
-
-        await $`convert ${cropOpt} ${cropParam} ${resizeOpt} ${resizeParam} -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_resize}`;
-      } else {
-        await Deno.copyFile(file.srcFileName, temp_file_resize);
-      }
-
-      const temp_file_pngquant = await makeTempFile({
-        prefix: temp_dir + "/",
-      });
-      // https://qiita.com/thanks2music@github/items/309700a411652c00672a
-      // 圧縮率は最高で、圧縮前の画像を残さない
-      await $`pngquant --force --speed 1 ${temp_file_resize} --output ${temp_file_pngquant}`;
-
-      const temp_file_pngcrush = await makeTempFile({
-        prefix: temp_dir + "/",
-      });
-      await $`pngcrush -force -nofilecheck -text b "Comment" "https://matunnkazumi.blog.fc2.com" ${temp_file_pngquant} ${temp_file_pngcrush}`;
-
-      await $`zopflipng -y -m --keepchunks=tEXt ${temp_file_pngcrush} ${file.newFileName}`;
+      console.log(`convert ${file.srcFileName}`);
+      const resized = await call_resize_and_crop(srcStream, width, param);
+      console.log(`pngquant ${file.srcFileName}`);
+      const quanted = await call_pngquant(resized);
+      console.log(`pngcrush and zopflipng ${file.srcFileName}`);
+      await call_crush_zopfli(temp_dir, quanted, file.newFileName);
     });
     await Promise.all(conveters);
   });
