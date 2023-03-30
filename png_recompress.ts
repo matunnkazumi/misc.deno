@@ -1,4 +1,5 @@
 import {
+  add_png_text_comment,
   date_now_jst_format,
   image_width,
   makeTempFile,
@@ -128,10 +129,6 @@ async function call_crush_zopfli(
       args: [
         "-force",
         "-nofilecheck",
-        "-text",
-        "b",
-        "Comment",
-        "https://matunnkazumi.blog.fc2.com",
         temp_file_src,
         temp_file_pngcrush,
       ],
@@ -144,7 +141,6 @@ async function call_crush_zopfli(
       args: [
         "-y",
         "-m",
-        "--keepchunks=tEXt",
         temp_file_pngcrush,
         destFileName,
       ],
@@ -175,6 +171,11 @@ export async function png_recompless(
       const quanted = await call_pngquant(resized);
       console.log(`pngcrush and zopflipng ${file.srcFileName}`);
       await call_crush_zopfli(temp_dir, quanted, file.newFileName);
+      console.log(`metadata ${file.newFileName}`);
+      await add_png_text_comment(
+        file.newFileName,
+        "https://matunnkazumi.blog.fc2.com/",
+      );
     });
     await Promise.all(conveters);
   });
