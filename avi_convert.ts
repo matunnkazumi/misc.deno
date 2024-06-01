@@ -1,6 +1,6 @@
 import { ensureDir } from "jsr:@std/fs@^0.229.1";
 import { pooledMap } from "jsr:@std/async@^0.224.1";
-import { $ } from "https://deno.land/x/zx_deno@1.2.2/mod.mjs";
+import { $ } from "npm:zx@8.1.2";
 
 export interface RecomplessFile {
   srcFileName: string;
