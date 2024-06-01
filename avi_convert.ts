@@ -1,6 +1,6 @@
-import { ensureDir } from "https://deno.land/std@0.126.0/fs/mod.ts";
-import { pooledMap } from "https://deno.land/std@0.126.0/async/mod.ts";
-import { $ } from "https://deno.land/x/zx_deno@1.2.2/mod.mjs";
+import { ensureDir } from "jsr:@std/fs@^0.229.1";
+import { pooledMap } from "jsr:@std/async@^0.224.1";
+import { $ } from "npm:zx@8.1.2";
 
 export interface RecomplessFile {
   srcFileName: string;
@@ -46,8 +46,7 @@ async function avi_recompless(
       const acodec = param.acodec;
       const vcodec = param.vcodec;
 
-      await $
-        `ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -acodec ${acodec} -vcodec ${vcodec} ${file.newFileName}`;
+      await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -acodec ${acodec} -vcodec ${vcodec} ${file.newFileName}`;
     },
   );
 
