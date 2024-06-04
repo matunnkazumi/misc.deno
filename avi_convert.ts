@@ -17,7 +17,7 @@ export interface ConvertOption {
     top: number;
   };
   acodec: string;
-  vcodec: string;
+  vcodec: "utvideo" | "h265" | "av1";
   concurrentLimit?: number;
 }
 
@@ -46,7 +46,15 @@ async function avi_recompless(
       const acodec = param.acodec;
       const vcodec = param.vcodec;
 
-      await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -acodec ${acodec} -vcodec ${vcodec} ${file.newFileName}`;
+      if (vcodec == "utvideo") {
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v ${vcodec} -c:a ${acodec}  ${file.newFileName}`;
+      } else if (vcodec == "h265") {
+        // https://life.craftz.dog/entry/save-storage-with-h265-ffmpeg
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v libx265 -crf 18 -b:v 0 -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
+      } else if (vcodec == "av1") {
+        // https://www.osumiakari.jp/articles/20231116-ffmpeg-svtav1/
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v libsvtav1 -preset 5 -svtav1-params tune=0:tile_columns=2:tile_rows=2 -c:a libopus -b:a 320k ${file.newFileName}`;
+      }
     },
   );
 
