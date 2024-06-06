@@ -16,8 +16,7 @@ export interface ConvertOption {
     left: number;
     top: number;
   };
-  acodec: string;
-  vcodec: "utvideo" | "h265" | "av1";
+  vcodec: "lossless" | "h265" | "av1";
   concurrentLimit?: number;
 }
 
@@ -43,11 +42,10 @@ async function avi_recompless(
       const toParam = file.option?.to ? `${file.option.to}` : "";
       const filters =
         `crop=${param.crop.width}:${param.crop.height}:${param.crop.left}:${param.crop.top}`;
-      const acodec = param.acodec;
       const vcodec = param.vcodec;
 
-      if (vcodec == "utvideo") {
-        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v ${vcodec} -c:a ${acodec}  ${file.newFileName}`;
+      if (vcodec == "lossless") {
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v utvideo -c:a flac  ${file.newFileName}`;
       } else if (vcodec == "h265") {
         // https://life.craftz.dog/entry/save-storage-with-h265-ffmpeg
         await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v libx265 -crf 18 -b:v 0 -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
