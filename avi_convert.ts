@@ -1,6 +1,6 @@
 import { ensureDir } from "jsr:@std/fs@^0.229.1";
 import { pooledMap } from "jsr:@std/async@^0.224.1";
-import { $ } from "npm:zx@8.1.2";
+import { $ } from "jsr:@david/dax@0.41.0";
 
 export interface RecomplessFile {
   srcFileName: string;
