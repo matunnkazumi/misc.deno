@@ -11,10 +11,13 @@ export interface RecomplessFile {
 }
 
 type CodecOption = {
-  vcodec: "lossless" | "h265" | "av1";
+  vcodec: "lossless" | "h265";
 } | {
   vcodec: "h265_vaapi";
   device: string;
+} | {
+  vcodec: "av1";
+  preset: number;
 };
 
 export type ConvertOption =
@@ -65,8 +68,9 @@ async function avi_recompless(
         const vf = `${filters},format=nv12,hwupload`;
         await $`ffmpeg -vaapi_device ${device} -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${vf} ${aspect} -c:v hevc_vaapi -qp 23 -rc_mode CQP -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
       } else if (vcodec == "av1") {
+        const preset = ("preset" in param) ? param.preset : 5;
         // https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Ffmpeg.md
-        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} ${aspect} -c:v libsvtav1 -preset 5 -crf 32 -g 240 -pix_fmt yuv420p10le -svtav1-params tune=0 -c:a libopus -b:a 320k ${file.newFileName}`;
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} ${aspect} -c:v libsvtav1 -preset ${preset} -crf 32 -g 240 -pix_fmt yuv420p10le -svtav1-params tune=0 -c:a libopus -b:a 320k ${file.newFileName}`;
       }
     },
   );
