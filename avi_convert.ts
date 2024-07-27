@@ -25,6 +25,7 @@ export type ConvertOption =
       left: number;
       top: number;
     };
+    aspect?: string;
     concurrentLimit?: number;
   })
   & CodecOption;
@@ -52,19 +53,20 @@ async function avi_recompless(
       const filters =
         `crop=${param.crop.width}:${param.crop.height}:${param.crop.left}:${param.crop.top}`;
       const vcodec = param.vcodec;
+      const aspect = param.aspect ? ["-aspect", param.aspect] : [];
 
       if (vcodec == "lossless") {
-        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v utvideo -c:a flac  ${file.newFileName}`;
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} ${aspect} -c:v utvideo -c:a flac  ${file.newFileName}`;
       } else if (vcodec == "h265") {
         // https://life.craftz.dog/entry/save-storage-with-h265-ffmpeg
-        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v libx265 -crf 18 -b:v 0 -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} ${aspect} -c:v libx265 -crf 18 -b:v 0 -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
       } else if (vcodec == "h265_vaapi") {
         const device = param.device;
         const vf = `${filters},format=nv12,hwupload`;
-        await $`ffmpeg -vaapi_device ${device} -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${vf} -c:v hevc_vaapi -qp 23 -rc_mode CQP -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
+        await $`ffmpeg -vaapi_device ${device} -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${vf} ${aspect} -c:v hevc_vaapi -qp 23 -rc_mode CQP -tag:v hvc1 -c:a aac -b:a 320k ${file.newFileName}`;
       } else if (vcodec == "av1") {
         // https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Ffmpeg.md
-        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} -c:v libsvtav1 -preset 5 -crf 32 -g 240 -pix_fmt yuv420p10le -svtav1-params tune=0 -c:a libopus -b:a 320k ${file.newFileName}`;
+        await $`ffmpeg -i ${file.srcFileName} ${toOpt} ${toParam} -vf ${filters} ${aspect} -c:v libsvtav1 -preset 5 -crf 32 -g 240 -pix_fmt yuv420p10le -svtav1-params tune=0 -c:a libopus -b:a 320k ${file.newFileName}`;
       }
     },
   );
