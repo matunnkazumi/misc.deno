@@ -9,17 +9,25 @@ export interface RecomplessFile {
     to?: string;
   };
 }
-export interface ConvertOption {
-  crop: {
-    width: number;
-    height: number;
-    left: number;
-    top: number;
-  };
-  vcodec: "lossless" | "h265" | "h265_vaapi" | "av1";
-  concurrentLimit?: number;
-  device?: string;
-}
+
+type CodecOption = {
+  vcodec: "lossless" | "h265" | "av1";
+} | {
+  vcodec: "h265_vaapi";
+  device: string;
+};
+
+export type ConvertOption =
+  & ({
+    crop: {
+      width: number;
+      height: number;
+      left: number;
+      top: number;
+    };
+    concurrentLimit?: number;
+  })
+  & CodecOption;
 
 async function avi_recompless(
   files: Array<RecomplessFile>,
