@@ -9,6 +9,15 @@ export interface RecomplessFile {
 }
 export interface ConvertOption {
   resize_width: number;
+  no_prefix?: boolean;
+}
+
+function build_output_path(file: RecomplessFile, option: ConvertOption) {
+  if (option.no_prefix) {
+    return `output/${file.newFileNameBase}`;
+  } else {
+    return `output/${date_prefix}_${file.newFileNameBase}`;
+  }
 }
 
 export async function jpeg_recompless(
@@ -23,7 +32,7 @@ export async function jpeg_recompless(
   const conveters = files.map((file) => {
     return {
       srcFileName: file.srcFileName,
-      newFileName: `output/${date_prefix}_${file.newFileNameBase}`,
+      newFileName: build_output_path(file, param),
     };
   }).map(async (file) => {
     const temp_file_name = await makeTempFile({ prefix: temp_dir + "/" });
