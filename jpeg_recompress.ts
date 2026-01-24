@@ -1,4 +1,5 @@
 import { $ } from "jsr:@david/dax@^0.44.2";
+import { ensureDir } from "jsr:@std/fs@^1.0.22";
 import { date_now_jst_format, makeTempDir, makeTempFile } from "./util.ts";
 
 const date_prefix = date_now_jst_format();
@@ -28,7 +29,7 @@ export async function jpeg_recompless(
     prefix: "matunnkazumi-jpeg-tempdir",
   });
 
-  await Deno.mkdir("./output");
+  await ensureDir("./output");
   const conveters = files.map((file) => {
     return {
       srcFileName: file.srcFileName,
