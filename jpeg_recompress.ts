@@ -28,7 +28,7 @@ export async function jpeg_recompless(
   }).map(async (file) => {
     const temp_file_name = await makeTempFile({ prefix: temp_dir + "/" });
 
-    await $`convert -resize ${param.resize_width}x -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_name}`;
+    await $`convert -auto-orient -resize ${param.resize_width}x -quality 100 -unsharp 0x0.75+0.75+0.008 ${file.srcFileName} ${temp_file_name}`;
     await $`guetzli --quality 84 ${temp_file_name} ${file.newFileName}`;
     await $`exiftool -overwrite_original -UserComment="https://matunnkazumi.blog.fc2.com/" ${file.newFileName}`;
   });
